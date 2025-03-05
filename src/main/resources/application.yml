@@ -1,0 +1,9 @@
+info:
+  application:
+    name: DirectDrop
+    description: Instant Messaging Service
+    author: Azizullah Khan
+    version: '@project.version@'
+spring:
+  profiles:
+    active: dev
