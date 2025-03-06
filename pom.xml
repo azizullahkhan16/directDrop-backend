@@ -27,7 +27,7 @@
         <url/>
     </scm>
     <properties>
-        <java.version>21</java.version>
+        <java.version>17</java.version>
         <redis.version>5.2.0</redis.version>
     </properties>
     <dependencies>
