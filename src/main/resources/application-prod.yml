@@ -8,12 +8,8 @@ spring:
       enabled: true
       max-file-size: 10MB
       max-request-size: 10MB
-  data:
-    mongodb:
-      host: localhost
-      database: DirectDrop
-      port: 27017
-      auto-index-creation: true
+
+
 server:
   port: 8080
 
