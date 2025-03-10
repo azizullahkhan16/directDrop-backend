@@ -2,6 +2,7 @@ package com.aktic.directdropbackend.model.entity;
 
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.DBRef;
@@ -12,18 +13,18 @@ import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 
-@Data
+@Getter
+@Setter
 @Document(collection = "chat_rooms")
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 public class ChatRoom {
-    @NonNull
-    @Indexed(unique = true)
+
+    @Id
     @Field("room_id")
     private Long roomId;
 
-    @NonNull
     @Indexed(unique = true)
     private String ip;
 

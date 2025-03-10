@@ -10,9 +10,7 @@ spring:
       max-request-size: 10MB
   data:
     mongodb:
-      host: localhost
-      database: DirectDrop
-      port: 27017
+      uri: mongodb://localhost:27017/DirectDrop
       auto-index-creation: true
 server:
   port: 8080

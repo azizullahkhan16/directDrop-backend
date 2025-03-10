@@ -2,6 +2,7 @@ package com.aktic.directdropbackend.model.entity;
 
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.DBRef;
@@ -18,8 +19,7 @@ import java.util.List;
 @Builder
 public class Message {
 
-    @NonNull
-    @Indexed(unique = true)
+    @Id
     @Field("message_id")
     private Long messageId;
 

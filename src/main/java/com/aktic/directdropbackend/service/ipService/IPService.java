@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class IPService {
 
-    private String extractClientIP(HttpServletRequest request) {
+    public String extractClientIP(HttpServletRequest request) {
         String ip = request.getHeader("X-Forwarded-For");
         if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
             ip = request.getHeader("Proxy-Client-IP");
