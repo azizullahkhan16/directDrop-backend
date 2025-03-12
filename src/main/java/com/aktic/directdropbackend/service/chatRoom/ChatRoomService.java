@@ -44,7 +44,6 @@ public class ChatRoomService {
                                 .roomId(idGenerator.nextId())
                                 .ip(userIp)
                                 .users(new HashSet<>())
-                                .createdAt(Instant.now())
                                 .build();
                         return chatRoomRepository.save(newChatRoom);
                     });

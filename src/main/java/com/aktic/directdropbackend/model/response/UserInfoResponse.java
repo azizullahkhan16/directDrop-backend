@@ -15,12 +15,14 @@ import java.time.Instant;
 public class UserInfoResponse {
     private Long userId;
     private String username;
+    private Boolean isActive;
     private Instant createdAt;
     private Instant updatedAt;
 
     public UserInfoResponse(User user) {
         this.userId = user.getUserId();
         this.username = user.getUsername();
+        this.isActive = user.getIsActive();
         this.createdAt = user.getCreatedAt();
         this.updatedAt = user.getUpdatedAt();
     }

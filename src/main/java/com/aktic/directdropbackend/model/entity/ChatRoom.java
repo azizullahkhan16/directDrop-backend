@@ -33,7 +33,8 @@ public class ChatRoom {
 
     @CreatedDate
     @Field("created_at")
-    private Instant createdAt;
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 
     @LastModifiedDate
     @Field("updated_at")

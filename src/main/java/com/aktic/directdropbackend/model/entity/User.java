@@ -31,11 +31,13 @@ public class User {
     private String username;
 
     @Field("is_active")
-    private boolean isActive = true;
+    @Builder.Default
+    private Boolean isActive = true;
 
     @CreatedDate
-    @Field("created_at")
-    private Instant createdAt;
+    @Field(name = "created_at")
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 
     @LastModifiedDate
     @Field("updated_at")
