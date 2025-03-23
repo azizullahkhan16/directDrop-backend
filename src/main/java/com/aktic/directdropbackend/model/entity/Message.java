@@ -32,7 +32,6 @@ public class Message {
     @DBRef
     private List<User> receivers;
 
-    @NonNull
     @DBRef
     private ChatRoom chatRoom;
 

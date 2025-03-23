@@ -7,7 +7,7 @@ import com.aktic.directdropbackend.model.response.UserInfoResponse;
 import com.aktic.directdropbackend.repository.ChatRoomRepository;
 import com.aktic.directdropbackend.repository.UserRepository;
 import com.aktic.directdropbackend.service.ipService.IPService;
-import com.aktic.directdropbackend.service.userService.UserService;
+import com.aktic.directdropbackend.service.user.UserService;
 import com.aktic.directdropbackend.util.ApiResponse;
 import com.aktic.directdropbackend.util.SnowflakeIdGenerator;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,7 +17,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 

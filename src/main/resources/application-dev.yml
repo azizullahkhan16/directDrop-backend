@@ -19,3 +19,8 @@ logging:
   level:
     root: info
 
+application:
+  storage:
+    folder-name: DirectDrop-Files
+
+
