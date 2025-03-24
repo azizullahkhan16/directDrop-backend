@@ -98,8 +98,9 @@ public class ChatRoomService {
 
         } catch (NoSuchElementException e) {
             // Handle the case when the chat room is not found
+            log.error("Validation error: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponse<>(false, "Room not found", null));
+                    .body(new ApiResponse<>(false, e.getMessage(), null));
         } catch (Exception e) {
             // Handle any other unexpected exceptions
             log.error("Unexpected error occurred while finding active users", e);

@@ -130,8 +130,9 @@ public class UserService {
             return ResponseEntity.ok(new ApiResponse<>(true, "Users fetched successfully", userDTOs));
 
         }catch (NoSuchElementException e) {
+            log.error("Validation error: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponse<>(false, "Room not found", null));
+                    .body(new ApiResponse<>(false, e.getMessage(), null));
 
         } catch (Exception e) {
             log.error("Unexpected error occurred while finding user", e);

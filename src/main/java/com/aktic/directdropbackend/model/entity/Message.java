@@ -40,8 +40,9 @@ public class Message {
     private List<String> attachments;
 
     @CreatedDate
-    @Field("created_at")
-    private Instant createdAt;
+    @Field(name = "created_at")
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 
     @LastModifiedDate
     @Field("updated_at")

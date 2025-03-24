@@ -1,8 +1,12 @@
 package com.aktic.directdropbackend.model.request;
 
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -10,9 +14,16 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class MessageSameNetRequest {
-    private Long userId;
-    private List<Long> receiverIds;
+
+    @NotNull(message = "Sender ID cannot be null.")
+    private Long senderId;
+
+    @NotEmpty(message = "Receiver IDs cannot be empty.")
+    private List<@NotNull Long> receiverIds;
+
+    @Size(min = 1, max = 1000, message = "Message must be between 1 and 1000 characters.")
     private String message;
-    private List<String> attachments;
-    private Long chatRoomId;
+
+    private MultipartFile[] attachments;
+
 }
