@@ -27,7 +27,7 @@ public class MessageInfoResponse {
         this.messageId = message.getMessageId();
         this.sender = new UserInfoResponse(message.getSender());
         this.receivers = message.getReceivers().stream().map(UserInfoResponse::new).toArray(UserInfoResponse[]::new);
-        this.chatRoom = new ChatRoomResponse(message.getChatRoom());
+        this.chatRoom =  message.getChatRoom() == null ? null : new ChatRoomResponse(message.getChatRoom());
         this.message = message.getMessage();
         this.attachments = message.getAttachments() == null ? null : message.getAttachments().toString();
         this.createdAt = message.getCreatedAt();
