@@ -14,22 +14,4 @@ import java.util.List;
 @Repository
 public interface MessageRepository extends MongoRepository<Message, Long> {
 
-    @Aggregation(pipeline = {
-            "{ $match: { 'chatRoom.roomId': ?0 } }",
-            "{ $sort: { 'createdAt': -1 } }",
-            "{ $skip: ?1 }",
-            "{ $limit: ?2 }"
-    })
-    List<Message> findByChatRoom(Long roomId, int skip, int limit);
-
-    @Aggregation(pipeline = {
-            "{ $match: { 'message': { $regex: ?0, $options: 'i' } } }",
-            "{ $match: { 'chatRoom.roomId': ?1 } }",
-            "{ $sort: { 'createdAt': -1 } }",
-            "{ $skip: ?2 }",
-            "{ $limit: ?3 }"
-    })
-    List<Message> findByChatRoomWithKeyword(String keyword, Long roomId, int skip, int limit);
-
-
 }

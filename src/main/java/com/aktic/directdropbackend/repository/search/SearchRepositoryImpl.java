@@ -1,33 +1,22 @@
 package com.aktic.directdropbackend.repository.search;
 
+import com.aktic.directdropbackend.model.entity.ChatRoom;
 import com.aktic.directdropbackend.model.entity.Message;
-import com.mongodb.client.AggregateIterable;
-import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.model.Aggregates;
-import com.mongodb.client.model.Filters;
-import com.mongodb.client.model.Sorts;
+import com.aktic.directdropbackend.model.entity.User;
+import com.aktic.directdropbackend.model.response.MessageInfoResponse;
 import lombok.RequiredArgsConstructor;
-import org.bson.Document;
-import org.bson.conversions.Bson;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.aggregation.Aggregation;
-import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
-import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Repository;
-import java.util.ArrayList;
-import java.util.List;
 
-import java.util.ArrayList;
+import java.util.*;
+
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Repository
 @RequiredArgsConstructor
@@ -36,53 +25,117 @@ public class SearchRepositoryImpl implements SearchRepository{
     private final MongoTemplate mongoTemplate;
 
     @Override
-    public Page<Message> fullTextSearchByChatRoom(Long chatRoomId, String keyword, String username, Pageable pageable) {
-        MongoCollection<Document> collection = mongoTemplate.getCollection("messages");
-        List<Bson> pipeline = new ArrayList<>();
+    public Page<MessageInfoResponse> fullTextSearchIncludingChatRoom(ChatRoom chatRoom, String keyword, String username, Pageable pageable) {
+        // Build base query for messages in the same chat room
+        Query query = new Query();
 
-        // Stage 1: Match chatRoomId
-        if (chatRoomId != null) {
-            pipeline.add(Aggregates.match(Filters.eq("chatRoom.room_id", chatRoomId)));
+        if(chatRoom != null) {
+            query.addCriteria(Criteria.where("chatRoom").is(chatRoom));
         }
 
-        // Stage 2: Full-text search
+        // Add keyword search if provided
         if (keyword != null && !keyword.trim().isEmpty()) {
-            pipeline.add(Aggregates.match(Filters.text(keyword)));
+            query.addCriteria(Criteria.where("message").regex(keyword, "i"));
         }
 
-        // Stage 3: Match sender/receivers by username
         if (username != null && !username.trim().isEmpty()) {
-            Bson regexFilter = Filters.regex("sender.username", username, "i");
-            Bson receiversFilter = Filters.elemMatch("receivers", Filters.regex("username", username, "i"));
-            pipeline.add(Aggregates.match(Filters.or(regexFilter, receiversFilter)));
+            Query userQuery = new Query()
+                    .addCriteria(Criteria.where("username").regex(username, "i"))
+                    .addCriteria(Criteria.where("chatRoom").is(chatRoom));
+            List<User> matchingUsers = mongoTemplate.find(userQuery, User.class);
+
+            if (matchingUsers.isEmpty()) {
+                throw new NoSuchElementException("No users found matching username '" + username + "' in this chat room");
+            }
+
+            query.addCriteria(Criteria.where("sender").in(matchingUsers));
         }
 
-        // Stage 4: Sorting
-        pipeline.add(Aggregates.sort(Sorts.descending("createdAt")));
+        // Get total count first (without pagination)
+        long total = mongoTemplate.count(query, Message.class);
 
-        // Stage 5: Pagination
-        pipeline.add(Aggregates.skip((int) pageable.getOffset()));
-        pipeline.add(Aggregates.limit(pageable.getPageSize()));
+        // Apply pagination to the query
+        query.with(pageable);
 
-        // Execute aggregation
-        AggregateIterable<Document> results = collection.aggregate(pipeline, Document.class);
+        // Get messages with pagination
+        List<Message> messages = mongoTemplate.find(query, Message.class);
 
-        // Convert results
-        List<Message> messages = new ArrayList<>();
-        for (Document doc : results) {
-            Message message = mongoTemplate.getConverter().read(Message.class, doc);
-            messages.add(message);
-        }
+        // Convert messages to response
+        List<MessageInfoResponse> messageInfoResponses = messages.stream()
+                .map(MessageInfoResponse::new)
+                .collect(Collectors.toList());
 
-        // Get total count separately
-        long total = collection.countDocuments(Filters.eq("chatRoom.roomId", chatRoomId));
-
-        return new PageImpl<>(messages, pageable, total);
+        return new PageImpl<>(
+                messageInfoResponses,
+                pageable,
+                total
+        );
     }
 
-
     @Override
-    public Page<Message> fullTextSearch(String keyword, String username, Pageable pageable) {
-        return fullTextSearchByChatRoom(null, keyword, username, pageable);
+    public Page<MessageInfoResponse> fullTextSearchExcludingChatRoom(User user, String keyword, String username, Pageable pageable) {
+        // Build base query for messages where chatRoom is null
+        Query query = new Query()
+                .addCriteria(Criteria.where("chatRoom").is(null)); // Chat room must be null
+
+        // Combine all user-related criteria in a single Criteria object
+        Criteria combinedCriteria = new Criteria();
+
+        // Base condition: user must be sender or receiver
+        Criteria userCriteria = new Criteria().orOperator(
+                Criteria.where("sender").is(user),
+                Criteria.where("receivers").in(user)
+        );
+
+        // Add username search if provided
+        if (username != null && !username.trim().isEmpty()) {
+            Query userQuery = new Query()
+                    .addCriteria(Criteria.where("username").regex(username, "i"));
+            List<User> matchingUsers = mongoTemplate.find(userQuery, User.class);
+
+            if (matchingUsers.isEmpty()) {
+                throw new NoSuchElementException("No users found matching username '" + username + "'");
+            }
+
+            // Combine user criteria with username criteria
+            Criteria usernameCriteria = new Criteria().orOperator(
+                    Criteria.where("sender").in(matchingUsers),
+                    Criteria.where("receivers").in(matchingUsers)
+            );
+
+            // Combine both conditions with AND
+            combinedCriteria.andOperator(userCriteria, usernameCriteria);
+        } else {
+            // If no username search, just use the user criteria
+            combinedCriteria.andOperator(userCriteria);
+        }
+
+        // Add the combined criteria to the query
+        query.addCriteria(combinedCriteria);
+
+        // Add keyword search if provided
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            query.addCriteria(Criteria.where("message").regex(keyword, "i"));
+        }
+
+        // Get total count first (without pagination)
+        long total = mongoTemplate.count(query, Message.class);
+
+        // Apply pagination with skip and limit
+        query.with(pageable);
+
+        // Get messages with pagination
+        List<Message> messages = mongoTemplate.find(query, Message.class);
+
+        // Convert messages to response
+        List<MessageInfoResponse> messageInfoResponses = messages.stream()
+                .map(MessageInfoResponse::new)
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(
+                messageInfoResponses,
+                pageable,
+                total
+        );
     }
 }

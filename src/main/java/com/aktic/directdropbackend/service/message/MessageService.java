@@ -13,14 +13,10 @@ import com.aktic.directdropbackend.repository.search.SearchRepository;
 import com.aktic.directdropbackend.service.fileStorage.FileStorageService;
 import com.aktic.directdropbackend.util.ApiResponse;
 import com.aktic.directdropbackend.util.SnowflakeIdGenerator;
-import jakarta.security.auth.message.MessageInfo;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -41,6 +37,7 @@ public class MessageService {
     private final ChatRoomRepository chatRoomRepository;
     private final MessageRepository messageRepository;
     private final SnowflakeIdGenerator idGenerator;
+    private final SearchRepository searchRepository;
 
     public ResponseEntity<ApiResponse<MessageInfoResponse>> sendMessageSameNetwork(MessageSameNetRequest messageSameNetRequest) {
         try {
@@ -170,10 +167,54 @@ public class MessageService {
         }
     }
 
-    public ResponseEntity<ApiResponse<List<MessageInfoResponse>>> getMessagesSameNetwork(
-            Long userId, Integer pageNumber, Integer limit, String keyword) {
+//    public ResponseEntity<ApiResponse<List<MessageInfoResponse>>> getMessagesSameNetwork(
+//            Long userId, Integer pageNumber, Integer limit, String keyword) {
+//        try {
+//            // Fetch user
+//            User user = userRepository.findByUserId(userId)
+//                    .orElseThrow(() -> new NoSuchElementException("User not found"));
+//
+//            // Get chat room of user
+//            ChatRoom chatRoom = user.getChatRoom();
+//            if (chatRoom == null) {
+//                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+//                        .body(new ApiResponse<>(false, "User is not in a chat room", null));
+//            }
+//
+//            // Pagination setup
+//            int page = (pageNumber != null && pageNumber > 0) ? pageNumber : 0;
+//            int size = (limit != null && limit > 0) ? limit : 50;
+//
+//            List<Message> messages;
+//
+//            if(keyword != null && !keyword.trim().isEmpty()) {
+//                messages = messageRepository.findByChatRoomWithKeyword(keyword, chatRoom.getRoomId(), page * size, size);
+//            } else {
+//                messages = messageRepository.findByChatRoom(chatRoom.getRoomId(), page * size, size);
+//            }
+//
+//            // convert messages to response
+//            List<MessageInfoResponse> messageInfoResponses = messages.stream()
+//                    .map(MessageInfoResponse::new)
+//                    .collect(Collectors.toList());
+//
+//            return ResponseEntity.ok(new ApiResponse<>(true, "Messages retrieved successfully", messageInfoResponses));
+//
+//        } catch (NoSuchElementException e) {
+//            log.error("Validation error: {}", e.getMessage());
+//            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+//                    .body(new ApiResponse<>(false, e.getMessage(), null));
+//        } catch (Exception e) {
+//            log.error("Unexpected error occurred while getting messages", e);
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                    .body(new ApiResponse<>(false, "Internal server error", null));
+//        }
+//    }
+
+
+    public ResponseEntity<ApiResponse<Page<MessageInfoResponse>>> getMessagesSameNetwork(
+            Long userId, Integer pageNumber, Integer limit, String keyword, String username) {
         try {
-            // Fetch user
             User user = userRepository.findByUserId(userId)
                     .orElseThrow(() -> new NoSuchElementException("User not found"));
 
@@ -185,26 +226,45 @@ public class MessageService {
             }
 
             // Pagination setup
-            int page = (pageNumber != null && pageNumber > 0) ? pageNumber : 0;
+            int page = (pageNumber != null && pageNumber >= 0) ? pageNumber : 0;
             int size = (limit != null && limit > 0) ? limit : 50;
+            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "messageId"));
 
-            List<Message> messages;
+            Page<MessageInfoResponse> messages = searchRepository.fullTextSearchIncludingChatRoom(chatRoom, keyword, username, pageable);
 
-            if(keyword != null && !keyword.trim().isEmpty()) {
-                messages = messageRepository.findByChatRoomWithKeyword(keyword, chatRoom.getRoomId(), page * size, size);
-            } else {
-                messages = messageRepository.findByChatRoom(chatRoom.getRoomId(), page * size, size);
-            }
-
-            // convert messages to response
-            List<MessageInfoResponse> messageInfoResponses = messages.stream()
-                    .map(MessageInfoResponse::new)
-                    .collect(Collectors.toList());
-
-            return ResponseEntity.ok(new ApiResponse<>(true, "Messages retrieved successfully", messageInfoResponses));
+            return ResponseEntity.ok(
+                    new ApiResponse<>(true, "Messages retrieved successfully", messages)
+            );
 
         } catch (NoSuchElementException e) {
-            log.error("Validation error: {}", e.getMessage());
+            log.error("Error: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(false, e.getMessage(), null));
+        } catch (Exception e) {
+            log.error("Unexpected error occurred while getting messages", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "Internal server error", null));
+        }
+    }
+
+    public ResponseEntity<ApiResponse<Page<MessageInfoResponse>>> getMessagesAcrossNetwork(Long userId, Integer pageNumber, Integer limit, String keyword, String username) {
+        try {
+            User user = userRepository.findByUserId(userId)
+                    .orElseThrow(() -> new NoSuchElementException("User not found"));
+
+            // Pagination setup
+            int page = (pageNumber != null && pageNumber >= 0) ? pageNumber : 0;
+            int size = (limit != null && limit > 0) ? limit : 50;
+            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "messageId"));
+
+            Page<MessageInfoResponse> messages = searchRepository.fullTextSearchExcludingChatRoom(user, keyword, username, pageable);
+
+            return ResponseEntity.ok(
+                    new ApiResponse<>(true, "Messages retrieved successfully", messages)
+            );
+
+        } catch (NoSuchElementException e) {
+            log.error("Error: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiResponse<>(false, e.getMessage(), null));
         } catch (Exception e) {

@@ -39,13 +39,25 @@ public class MessageController {
     }
 
     @GetMapping("/same-network/get-messages/{userId}")
-    public ResponseEntity<ApiResponse<List<MessageInfoResponse>>> getMessagesSameNetwork(
+    public ResponseEntity<ApiResponse<Page<MessageInfoResponse>>> getMessagesSameNetwork(
             @PathVariable Long userId,
             @RequestParam(required = false) Integer pageNumber,
             @RequestParam(required = false) Integer limit,
-            @RequestParam(required = false) String keyword
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String username
     ) {
-        return messageService.getMessagesSameNetwork(userId, pageNumber, limit, keyword);
+        return messageService.getMessagesSameNetwork(userId, pageNumber, limit, keyword, username);
+    }
+
+    @GetMapping("/across-network/get-messages/{userId}")
+    public ResponseEntity<ApiResponse<Page<MessageInfoResponse>>> getMessagesAcrossNetwork(
+            @PathVariable Long userId,
+            @RequestParam(required = false) Integer pageNumber,
+            @RequestParam(required = false) Integer limit,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String username
+    ) {
+        return messageService.getMessagesAcrossNetwork(userId, pageNumber, limit, keyword, username);
     }
 
 
