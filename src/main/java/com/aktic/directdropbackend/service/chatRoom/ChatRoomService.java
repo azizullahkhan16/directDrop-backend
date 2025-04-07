@@ -2,11 +2,14 @@ package com.aktic.directdropbackend.service.chatRoom;
 
 import com.aktic.directdropbackend.model.entity.ChatRoom;
 import com.aktic.directdropbackend.model.entity.User;
+import com.aktic.directdropbackend.model.enums.NotificationType;
 import com.aktic.directdropbackend.model.response.ChatRoomResponse;
+import com.aktic.directdropbackend.model.response.NotifyMessageResponse;
 import com.aktic.directdropbackend.model.response.UserInfoResponse;
 import com.aktic.directdropbackend.repository.ChatRoomRepository;
 import com.aktic.directdropbackend.repository.UserRepository;
 import com.aktic.directdropbackend.service.ipService.IPService;
+import com.aktic.directdropbackend.service.socket.SocketService;
 import com.aktic.directdropbackend.service.user.UserService;
 import com.aktic.directdropbackend.util.ApiResponse;
 import com.aktic.directdropbackend.util.SnowflakeIdGenerator;
@@ -17,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -30,6 +34,7 @@ public class ChatRoomService {
     private final IPService ipService;
     private final SnowflakeIdGenerator idGenerator;
     private final UserService userService;
+    private final SocketService socketService;
 
     public ResponseEntity<ApiResponse<Map<String, Object>>> findRoomService(HttpServletRequest request, Long userId) {
         try {
@@ -62,6 +67,20 @@ public class ChatRoomService {
             Set<UserInfoResponse> userDTOs = chatRoom.getUsers().stream()
                     .map(UserInfoResponse::new)
                     .collect(Collectors.toSet());
+
+            ChatRoomResponse chatRoomResponse = new ChatRoomResponse(chatRoom);
+            UserInfoResponse userInfoResponse = new UserInfoResponse(user);
+
+            NotifyMessageResponse notifyMessageResponse = NotifyMessageResponse.builder()
+                    .user(userInfoResponse)
+                    .chatRoom(chatRoomResponse)
+                    .message(user.getUsername() + " has joined the chat")
+                    .type(NotificationType.JOIN)
+                    .createdAt(Instant.now())
+                    .build();
+
+            // Notify all users in the chat room
+            socketService.joinChat(notifyMessageResponse);
 
             // Construct response
             Map<String, Object> responseData = new HashMap<>();
