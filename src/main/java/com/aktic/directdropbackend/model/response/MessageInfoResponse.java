@@ -14,7 +14,7 @@ import java.time.Instant;
 @NoArgsConstructor
 @Builder
 public class MessageInfoResponse {
-    private Long messageId;
+    private String messageId;
     private UserInfoResponse sender;
     private UserInfoResponse[] receivers;
     private ChatRoomResponse chatRoom;
@@ -24,7 +24,7 @@ public class MessageInfoResponse {
     private Instant updatedAt;
 
     public MessageInfoResponse(Message message) {
-        this.messageId = message.getMessageId();
+        this.messageId = message.getMessageId().toString();
         this.sender = new UserInfoResponse(message.getSender());
         this.receivers = message.getReceivers().stream().map(UserInfoResponse::new).toArray(UserInfoResponse[]::new);
         this.chatRoom =  message.getChatRoom() == null ? null : new ChatRoomResponse(message.getChatRoom());

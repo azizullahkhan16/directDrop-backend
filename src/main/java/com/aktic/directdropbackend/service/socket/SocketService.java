@@ -15,11 +15,11 @@ public class SocketService {
 
     public void joinChat(NotifyMessageResponse notifyMessageResponse) {
         log.info(notifyMessageResponse.getUser().getUsername() + " joined the chat room: " + notifyMessageResponse.getChatRoom().getRoomId());
-        messagingTemplate.convertAndSend("/topic/chatroom." + notifyMessageResponse.getChatRoom().getRoomId(), notifyMessageResponse);
+        messagingTemplate.convertAndSend("/topic/notify." + notifyMessageResponse.getChatRoom().getRoomId(), notifyMessageResponse);
     }
 
     public void leaveChat(NotifyMessageResponse notifyMessageResponse) {
-        messagingTemplate.convertAndSend("/topic/chatroom." + notifyMessageResponse.getChatRoom().getRoomId(), notifyMessageResponse);
+        messagingTemplate.convertAndSend("/topic/notify." + notifyMessageResponse.getChatRoom().getRoomId(), notifyMessageResponse);
     }
 
     public void sendMessageToChatRoom(MessageInfoResponse message) {

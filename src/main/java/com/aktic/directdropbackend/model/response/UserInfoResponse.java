@@ -13,14 +13,14 @@ import java.time.Instant;
 @NoArgsConstructor
 @Builder
 public class UserInfoResponse {
-    private Long userId;
+    private String userId;
     private String username;
     private Boolean isActive;
     private Instant createdAt;
     private Instant updatedAt;
 
     public UserInfoResponse(User user) {
-        this.userId = user.getUserId();
+        this.userId = user.getUserId().toString();
         this.username = user.getUsername();
         this.isActive = user.getIsActive();
         this.createdAt = user.getCreatedAt();
