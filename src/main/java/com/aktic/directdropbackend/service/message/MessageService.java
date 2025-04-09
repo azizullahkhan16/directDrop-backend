@@ -11,6 +11,7 @@ import com.aktic.directdropbackend.repository.MessageRepository;
 import com.aktic.directdropbackend.repository.UserRepository;
 import com.aktic.directdropbackend.repository.search.SearchRepository;
 import com.aktic.directdropbackend.service.fileStorage.FileStorageService;
+import com.aktic.directdropbackend.service.socket.SocketService;
 import com.aktic.directdropbackend.util.ApiResponse;
 import com.aktic.directdropbackend.util.SnowflakeIdGenerator;
 import jakarta.validation.Valid;
@@ -22,10 +23,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,6 +36,7 @@ public class MessageService {
     private final MessageRepository messageRepository;
     private final SnowflakeIdGenerator idGenerator;
     private final SearchRepository searchRepository;
+    private final SocketService socketService;
 
     public ResponseEntity<ApiResponse<MessageInfoResponse>> sendMessageSameNetwork(MessageSameNetRequest messageSameNetRequest) {
         try {
@@ -54,14 +53,17 @@ public class MessageService {
 
             // Get the list of users in the sender's chat room
             Set<User> chatRoomMembers = chatRoom.getUsers();
-
-            // Validate that all receivers are in the same chat room
-            List<User> receivers = messageSameNetRequest.getReceiverIds().stream()
-                    .map(receiverId -> chatRoomMembers.stream()
-                            .filter(user -> user.getUserId().equals(receiverId))
-                            .findFirst()
-                            .orElseThrow(() -> new NoSuchElementException("Receiver with ID " + receiverId + " is not in the chat room")))
-                    .collect(Collectors.toList());
+            List<User> receivers;
+            if(messageSameNetRequest.getReceiverIds() == null || messageSameNetRequest.getReceiverIds().isEmpty()) {
+                receivers = new ArrayList<>();
+            }else {
+                receivers = messageSameNetRequest.getReceiverIds().stream()
+                        .map(receiverId -> chatRoomMembers.stream()
+                                .filter(user -> user.getUserId().equals(receiverId))
+                                .findFirst()
+                                .orElseThrow(() -> new NoSuchElementException("Receiver with ID " + receiverId + " is not in the chat room")))
+                        .collect(Collectors.toList());
+            }
 
             // Handle attachments (if any)
             MultipartFile[] attachments = messageSameNetRequest.getAttachments();
@@ -90,8 +92,16 @@ public class MessageService {
                     .build();
 
             Message savedMessage = messageRepository.save(message);
+            MessageInfoResponse messageInfoResponse = new MessageInfoResponse(savedMessage);
 
-            return ResponseEntity.ok(new ApiResponse<>(true, "Message sent successfully", new MessageInfoResponse(savedMessage)));
+            // Notify all users in the chat room
+            if(receivers.isEmpty()) {
+                socketService.sendMessageSameNetwork(messageInfoResponse);
+            }else {
+                socketService.sendMessageSameNetByReceiver(messageInfoResponse);
+            }
+
+            return ResponseEntity.ok(new ApiResponse<>(true, "Message sent successfully", messageInfoResponse));
 
         } catch (NoSuchElementException e) {
             log.error("Validation error: {}", e.getMessage());
@@ -152,8 +162,10 @@ public class MessageService {
                     .build();
 
             Message savedMessage = messageRepository.save(message);
+            MessageInfoResponse messageInfoResponse = new MessageInfoResponse(savedMessage);
+            socketService.sendMessageAcrossNetwork(messageInfoResponse);
 
-            return ResponseEntity.ok(new ApiResponse<>(true, "Message sent successfully", new MessageInfoResponse(savedMessage)));
+            return ResponseEntity.ok(new ApiResponse<>(true, "Message sent successfully", messageInfoResponse));
 
         } catch (NoSuchElementException e) {
             log.error("Validation error: {}", e.getMessage());
@@ -166,51 +178,6 @@ public class MessageService {
                     .body(new ApiResponse<>(false, "Internal server error", null));
         }
     }
-
-//    public ResponseEntity<ApiResponse<List<MessageInfoResponse>>> getMessagesSameNetwork(
-//            Long userId, Integer pageNumber, Integer limit, String keyword) {
-//        try {
-//            // Fetch user
-//            User user = userRepository.findByUserId(userId)
-//                    .orElseThrow(() -> new NoSuchElementException("User not found"));
-//
-//            // Get chat room of user
-//            ChatRoom chatRoom = user.getChatRoom();
-//            if (chatRoom == null) {
-//                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-//                        .body(new ApiResponse<>(false, "User is not in a chat room", null));
-//            }
-//
-//            // Pagination setup
-//            int page = (pageNumber != null && pageNumber > 0) ? pageNumber : 0;
-//            int size = (limit != null && limit > 0) ? limit : 50;
-//
-//            List<Message> messages;
-//
-//            if(keyword != null && !keyword.trim().isEmpty()) {
-//                messages = messageRepository.findByChatRoomWithKeyword(keyword, chatRoom.getRoomId(), page * size, size);
-//            } else {
-//                messages = messageRepository.findByChatRoom(chatRoom.getRoomId(), page * size, size);
-//            }
-//
-//            // convert messages to response
-//            List<MessageInfoResponse> messageInfoResponses = messages.stream()
-//                    .map(MessageInfoResponse::new)
-//                    .collect(Collectors.toList());
-//
-//            return ResponseEntity.ok(new ApiResponse<>(true, "Messages retrieved successfully", messageInfoResponses));
-//
-//        } catch (NoSuchElementException e) {
-//            log.error("Validation error: {}", e.getMessage());
-//            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-//                    .body(new ApiResponse<>(false, e.getMessage(), null));
-//        } catch (Exception e) {
-//            log.error("Unexpected error occurred while getting messages", e);
-//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-//                    .body(new ApiResponse<>(false, "Internal server error", null));
-//        }
-//    }
-
 
     public ResponseEntity<ApiResponse<Page<MessageInfoResponse>>> getMessagesSameNetwork(
             Long userId, Integer pageNumber, Integer limit, String keyword, String username) {
@@ -230,7 +197,7 @@ public class MessageService {
             int size = (limit != null && limit > 0) ? limit : 50;
             Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "messageId"));
 
-            Page<MessageInfoResponse> messages = searchRepository.fullTextSearchIncludingChatRoom(chatRoom, keyword, username, pageable);
+            Page<MessageInfoResponse> messages = searchRepository.fullTextSearchIncludingChatRoom(chatRoom, user, keyword, username, pageable);
 
             return ResponseEntity.ok(
                     new ApiResponse<>(true, "Messages retrieved successfully", messages)

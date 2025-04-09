@@ -25,11 +25,11 @@ public class SearchRepositoryImpl implements SearchRepository{
     private final MongoTemplate mongoTemplate;
 
     @Override
-    public Page<MessageInfoResponse> fullTextSearchIncludingChatRoom(ChatRoom chatRoom, String keyword, String username, Pageable pageable) {
+    public Page<MessageInfoResponse> fullTextSearchIncludingChatRoom(ChatRoom chatRoom, User user, String keyword, String username, Pageable pageable) {
         // Build base query for messages in the same chat room
         Query query = new Query();
 
-        if(chatRoom != null) {
+        if (chatRoom != null) {
             query.addCriteria(Criteria.where("chatRoom").is(chatRoom));
         }
 
@@ -49,6 +49,22 @@ public class SearchRepositoryImpl implements SearchRepository{
             }
 
             query.addCriteria(Criteria.where("sender").in(matchingUsers));
+        }
+
+        // Add criteria for user being sender or receiver when receivers is not empty
+        if (user != null) {
+            Criteria userCriteria = new Criteria().orOperator(
+                    // Case 1: User is the sender
+                    Criteria.where("sender").is(user),
+                    // Case 2: Receivers is empty (chatroom broadcast, no restriction)
+                    Criteria.where("receivers").size(0),
+                    // Case 3: Receivers is not empty, and user is in receivers
+                    new Criteria().andOperator(
+                            Criteria.where("receivers").ne(Collections.emptyList()), // Receivers is not empty
+                            Criteria.where("receivers").in(user) // User is in receivers
+                    )
+            );
+            query.addCriteria(userCriteria);
         }
 
         // Get total count first (without pagination)

@@ -18,8 +18,7 @@ public class MessageSameNetRequest {
     @NotNull(message = "Sender ID cannot be null.")
     private Long senderId;
 
-    @NotEmpty(message = "Receiver IDs cannot be empty.")
-    private List<@NotNull Long> receiverIds;
+    private List<Long> receiverIds;
 
     @Size(min = 1, max = 1000, message = "Message must be between 1 and 1000 characters.")
     private String message;
