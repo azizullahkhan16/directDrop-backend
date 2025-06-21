@@ -9,4 +9,6 @@ import java.util.Optional;
 @Repository
 public interface ChatRoomRepository extends MongoRepository<ChatRoom, Long> {
     Optional<ChatRoom> findByRoomId(Long roomId);
+
+    Optional<ChatRoom> findByIp(String userIp);
 }

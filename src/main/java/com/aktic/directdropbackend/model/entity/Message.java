@@ -2,8 +2,10 @@ package com.aktic.directdropbackend.model.entity;
 
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.index.TextIndexed;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
@@ -18,8 +20,7 @@ import java.util.List;
 @Builder
 public class Message {
 
-    @NonNull
-    @Indexed(unique = true)
+    @Id
     @Field("message_id")
     private Long messageId;
 
@@ -32,17 +33,18 @@ public class Message {
     @DBRef
     private List<User> receivers;
 
-    @NonNull
     @DBRef
     private ChatRoom chatRoom;
 
+    @TextIndexed
     private String message;
 
     private List<String> attachments;
 
     @CreatedDate
-    @Field("created_at")
-    private Instant createdAt;
+    @Field(name = "created_at")
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 
     @LastModifiedDate
     @Field("updated_at")
